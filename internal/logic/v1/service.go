@@ -29,9 +29,9 @@ func (s *ReviewService) ListReviews(ctx context.Context, productID string) ([]do
 	defer span.End()
 
 	// Get database connection pool (pgx)
-	db := database.GetDB()
+	db := database.GetPool()
 	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
+		return nil, errors.New("database connection not available")
 	}
 
 	// Convert productID to int
@@ -96,9 +96,9 @@ func (s *ReviewService) CreateReview(ctx context.Context, req domain.CreateRevie
 	defer span.End()
 
 	// Get database connection pool (pgx)
-	db := database.GetDB()
+	db := database.GetPool()
 	if db == nil {
-		return nil, fmt.Errorf("database connection not available")
+		return nil, errors.New("database connection not available")
 	}
 
 	// Validate rating range
