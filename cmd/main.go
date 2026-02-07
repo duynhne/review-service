@@ -15,6 +15,8 @@ import (
 
 	"github.com/duynhne/review-service/config"
 	database "github.com/duynhne/review-service/internal/core"
+	"github.com/duynhne/review-service/internal/core/repository"
+	logicv1 "github.com/duynhne/review-service/internal/logic/v1"
 	v1 "github.com/duynhne/review-service/internal/web/v1"
 	"github.com/duynhne/review-service/middleware"
 )
@@ -51,7 +53,13 @@ func main() {
 	logger.Info("Database connection pool established")
 
 	var isShuttingDown atomic.Bool
-	srv := setupServer(cfg, logger, &isShuttingDown)
+
+	// Dependency Injection
+	repo := repository.NewReviewRepository(pool)
+	service := logicv1.NewReviewService(repo)
+	handler := v1.NewReviewHandler(service)
+
+	srv := setupServer(cfg, logger, &isShuttingDown, handler)
 	runGracefulShutdown(cfg, srv, tp, pool, logger, &isShuttingDown)
 }
 
@@ -84,7 +92,7 @@ func initProfiling(cfg *config.Config, logger *zap.Logger) {
 	logger.Info("Profiling initialized", zap.String("endpoint", cfg.Profiling.Endpoint))
 }
 
-func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.Bool) *http.Server {
+func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.Bool, handler *v1.ReviewHandler) *http.Server {
 	r := gin.Default()
 
 	r.Use(middleware.TracingMiddleware())
@@ -105,8 +113,8 @@ func setupServer(cfg *config.Config, logger *zap.Logger, isShuttingDown *atomic.
 
 	apiV1 := r.Group("/api/v1")
 	{
-		apiV1.GET("/reviews", v1.ListReviews)
-		apiV1.POST("/reviews", v1.CreateReview)
+		apiV1.GET("/reviews", handler.ListReviews)
+		apiV1.POST("/reviews", handler.CreateReview)
 	}
 
 	return &http.Server{
