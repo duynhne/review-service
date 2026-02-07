@@ -13,9 +13,15 @@ import (
 	"go.uber.org/zap"
 )
 
-var reviewService = logicv1.NewReviewService()
+type ReviewHandler struct {
+	service *logicv1.ReviewService
+}
 
-func ListReviews(c *gin.Context) {
+func NewReviewHandler(service *logicv1.ReviewService) *ReviewHandler {
+	return &ReviewHandler{service: service}
+}
+
+func (h *ReviewHandler) ListReviews(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
 		attribute.String("layer", "web"),
 		attribute.String("method", c.Request.Method),
@@ -35,7 +41,7 @@ func ListReviews(c *gin.Context) {
 	}
 	span.SetAttributes(attribute.String("product.id", productID))
 
-	reviews, err := reviewService.ListReviews(ctx, productID)
+	reviews, err := h.service.ListReviews(ctx, productID)
 	if err != nil {
 		span.RecordError(err)
 		zapLogger.Error("Failed to list reviews", zap.Error(err), zap.String("product_id", productID))
@@ -47,7 +53,7 @@ func ListReviews(c *gin.Context) {
 	c.JSON(http.StatusOK, reviews)
 }
 
-func CreateReview(c *gin.Context) {
+func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	ctx, span := middleware.StartSpan(c.Request.Context(), "http.request", trace.WithAttributes(
 		attribute.String("layer", "web"),
 		attribute.String("method", c.Request.Method),
@@ -67,7 +73,7 @@ func CreateReview(c *gin.Context) {
 	}
 
 	span.SetAttributes(attribute.Bool("request.valid", true))
-	review, err := reviewService.CreateReview(ctx, req)
+	review, err := h.service.CreateReview(ctx, req)
 	if err != nil {
 		span.RecordError(err)
 		zapLogger.Error("Failed to create review", zap.Error(err))
